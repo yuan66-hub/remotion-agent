@@ -11,6 +11,7 @@ import {
   createHighlightOverlay,
   createTransitionOverlay
 } from '@/lib/instructions/remotion'
+import type { TextAnimationConfig, TextAnimationType } from '@/lib/instructions/types'
 import { getGlobalAudioController } from '@/lib/audio/AudioController'
 
 function formatTime(seconds: number): string {
@@ -68,6 +69,13 @@ export function Editor() {
       console.log('[Editor] Setting instruction to complete')
       // Add to overlays store for rendering
       if (instruction.type === 'addText') {
+        // 构建动画配置
+        const animationConfig: TextAnimationConfig | undefined =
+          inst.params.animation as TextAnimationConfig;
+        const entranceAnimation = inst.params.entranceAnimation as TextAnimationType | undefined;
+        const exitAnimation = inst.params.exitAnimation as TextAnimationType | undefined;
+        const animationDuration = inst.params.animationDuration as number | undefined;
+
         addOverlay(
           createTextOverlay({
             startTime: inst.params.startTime as number,
@@ -75,7 +83,11 @@ export function Editor() {
             text: inst.params.text as string,
             position: inst.params.position as { x: number; y: number },
             fontSize: inst.params.fontSize as number,
-            color: inst.params.color as string
+            color: inst.params.color as string,
+            animation: animationConfig,
+            entranceAnimation,
+            exitAnimation,
+            animationDuration
           })
         )
       } else if (instruction.type === 'addHighlight') {
@@ -174,6 +186,13 @@ export function Editor() {
       console.log('[Editor] Auto-executing Remotion overlay')
       // Add to overlays store for rendering
       if (inst.type === 'addText') {
+        // 构建动画配置
+        const animationConfig: TextAnimationConfig | undefined =
+          inst.params.animation as TextAnimationConfig;
+        const entranceAnimation = inst.params.entranceAnimation as TextAnimationType | undefined;
+        const exitAnimation = inst.params.exitAnimation as TextAnimationType | undefined;
+        const animationDuration = inst.params.animationDuration as number | undefined;
+
         addOverlay(
           createTextOverlay({
             startTime: inst.params.startTime as number,
@@ -181,7 +200,11 @@ export function Editor() {
             text: inst.params.text as string,
             position: inst.params.position as { x: number; y: number },
             fontSize: inst.params.fontSize as number,
-            color: inst.params.color as string
+            color: inst.params.color as string,
+            animation: animationConfig,
+            entranceAnimation,
+            exitAnimation,
+            animationDuration
           })
         )
       } else if (inst.type === 'addHighlight') {

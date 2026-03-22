@@ -12,6 +12,14 @@ import { useEditorStore } from '@/stores/editorStore'
 import { Timeline } from './Timeline'
 import { Controls } from './Controls'
 import { AudioController, getGlobalAudioController } from '@/lib/audio/AudioController'
+import {
+  getAnimationConfig,
+  getAnimationKeyframes,
+  getEasingCSS,
+  getTypewriterProgress,
+  getTypewriterClipPath
+} from '@/lib/instructions/remotion/animations'
+import type { TextOverlay } from '@/lib/instructions/remotion'
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -287,23 +295,99 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
         {/* Render active overlays */}
         {activeOverlays.map(overlay => {
           if (overlay.type === 'text') {
+            const textOverlay = overlay as TextOverlay
+            const { entrance, exit } = getAnimationConfig(
+              textOverlay.animation,
+              textOverlay.entranceAnimation,
+              textOverlay.animationDuration
+            )
+
+            // 计算动画进度
+            const entranceDuration = entrance.duration || 300
+            const exitDuration = exit.duration || 300
+            const entranceEnd = textOverlay.startTime + entranceDuration / 1000
+            const exitStart = textOverlay.endTime - exitDuration / 1000
+            const textVisibleEnd = exitStart
+
+            // 根据当前时间计算动画状态
+            let animationProgress = 0 // 0-1 进场动画进度
+            let exitProgress = 0     // 0-1 出场动画进度
+            let isVisible = true
+
+            if (currentTime < textOverlay.startTime) {
+              isVisible = false
+            } else if (currentTime < entranceEnd) {
+              // 进场动画中
+              animationProgress = (currentTime - textOverlay.startTime) / (entranceDuration / 1000)
+              animationProgress = Math.min(1, animationProgress)
+              isVisible = true
+            } else if (currentTime >= textVisibleEnd && currentTime < textOverlay.endTime) {
+              // 出场动画中
+              exitProgress = (currentTime - textVisibleEnd) / (exitDuration / 1000)
+              exitProgress = Math.min(1, exitProgress)
+              isVisible = true
+            } else if (currentTime >= textOverlay.endTime) {
+              isVisible = false
+            } else {
+              isVisible = true
+            }
+
+            if (!isVisible) return null
+
+            // 获取进场动画关键帧
+            const entranceKeyframes = getAnimationKeyframes(
+              animationProgress < 1 ? entrance.type : 'none',
+              animationProgress,
+              entrance.intensity
+            )
+
+            // 获取出场动画关键帧
+            const exitKeyframes = getAnimationKeyframes(
+              exitProgress > 0 ? exit.type : 'none',
+              exitProgress,
+              exit.intensity
+            )
+
+            // 合并动画效果
+            const combinedOpacity = entranceKeyframes.opacity * (1 - exitProgress)
+            const combinedTransform = `${entranceKeyframes.transform} ${exitKeyframes.transform !== 'none' ? exitKeyframes.transform : ''}`.trim() || 'none'
+            const combinedFilter = entranceKeyframes.filter || exitKeyframes.filter
+
+            // 处理打字机效果
+            const isTypewriter = entrance.type === 'typewriter'
+            const typewriterProgress = isTypewriter
+              ? getTypewriterProgress(animationProgress, textOverlay.text.length)
+              : textOverlay.text.length
+
+            const textStyle: React.CSSProperties = {
+              left: `${textOverlay.position.x * 100}%`,
+              top: `${textOverlay.position.y * 100}%`,
+              transform: `translate(-50%, -50%) ${combinedTransform}`,
+              opacity: combinedOpacity,
+              fontSize: textOverlay.fontSize || 48,
+              color: textOverlay.color || '#FFFFFF',
+              textShadow:
+                '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.6)',
+              fontWeight: 'bold',
+              whiteSpace: 'nowrap',
+              filter: combinedFilter || undefined,
+              transition: `transform ${entranceDuration}ms ${getEasingCSS(entrance.easing || 'ease-out')}, opacity ${entranceDuration}ms ${getEasingCSS(entrance.easing || 'ease-out')}`,
+            }
+
+            // 打字机效果使用 clip-path
+            if (isTypewriter && animationProgress < 1) {
+              textStyle.clipPath = getTypewriterClipPath(animationProgress)
+            }
+
             return (
               <div
-                key={overlay.id}
+                key={textOverlay.id}
                 className="absolute pointer-events-none"
-                style={{
-                  left: `${overlay.position.x * 100}%`,
-                  top: `${overlay.position.y * 100}%`,
-                  transform: 'translate(-50%, -50%)',
-                  fontSize: overlay.fontSize || 48,
-                  color: overlay.color || '#FFFFFF',
-                  textShadow:
-                    '2px 2px 4px rgba(0,0,0,0.8), -1px -1px 2px rgba(0,0,0,0.6)',
-                  fontWeight: 'bold',
-                  whiteSpace: 'nowrap'
-                }}
+                style={textStyle}
               >
-                {overlay.text}
+                {isTypewriter
+                  ? textOverlay.text.substring(0, typewriterProgress)
+                  : textOverlay.text}
               </div>
             )
           }

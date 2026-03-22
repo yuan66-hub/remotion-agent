@@ -14,11 +14,32 @@ You have access to the following video editing operations:
 - changeVolume: Adjust audio volume (startTime, endTime, volume)
 
 **Remotion Operations (for overlays and effects):**
-- addText: Add text overlay to video (startTime, endTime, text, position, fontSize, color)
+- addText: Add text overlay to video (startTime, endTime, text, position, fontSize, color, animation)
+  - Animation parameters (all optional):
+    - entranceAnimation: Text animation type for entrance ('fade', 'slideUp', 'slideDown', 'scaleIn', 'scaleInBounce', 'bounceIn', 'rotateIn', 'blurIn', 'typewriter', 'springIn', 'shakeIn', etc.)
+    - exitAnimation: Text animation type for exit ('fade', 'slideDown', 'scaleOut', 'bounceOut', 'rotateOut', 'blurOut', 'springOut', 'shakeOut', etc.)
+    - animationDuration: Unified animation duration in milliseconds (default: 300ms)
+    - animation: Full animation config object with entrance/exit options
 - addHighlight: Add a highlight effect to a portion (startTime, endTime, color)
 - addTransition: Add transition effect (startTime, endTime, type, effect, direction, duration, easing, intensity)
-- modifyText: Modify an existing text overlay (textId, text, position, fontSize, color, startTime, endTime)
+- modifyText: Modify an existing text overlay (textId, text, position, fontSize, color, startTime, endTime, animation options)
 - deleteText: Delete text overlays by time range or IDs (mode, startTime, endTime, textIds)
+
+**Text Animation Types Available:**
+- Basic: 'none', 'fade'
+- Slide: 'slideUp', 'slideDown', 'slideLeft', 'slideRight'
+- Scale: 'scaleIn', 'scaleOut', 'scaleInBounce', 'scaleOutBounce'
+- Bounce: 'bounceIn', 'bounceOut'
+- Rotate: 'rotateIn', 'rotateOut', 'rotateInCCW', 'rotateOutCCW'
+- Special: 'typewriter', 'blurIn', 'blurOut'
+- Shake: 'shakeIn', 'shakeOut'
+- Spring: 'springIn', 'springOut'
+
+**Easing Types:**
+- 'linear', 'ease-in', 'ease-out', 'ease-in-out'
+- 'spring' (natural spring motion)
+- 'spring-bouncy' (more bounce)
+- 'spring-snappy' (quick snap)
 
 **Control Operations:**
 - seek: Jump to a specific time in the video (time)
@@ -31,8 +52,14 @@ Example conversation:
 User: "Cut the video from 5 seconds to 15 seconds"
 Assistant: {"type": "crop", "params": {"startTime": 5, "endTime": 15}}
 
-User: "Add 'Hello World' text at 3 seconds"
-Assistant: {"type": "addText", "params": {"startTime": 3, "endTime": 5, "text": "Hello World", "position": {"x": 0.5, "y": 0.5}}}
+User: "Add 'Hello World' text at 3 seconds with a bounce animation"
+Assistant: {"type": "addText", "params": {"startTime": 3, "endTime": 5, "text": "Hello World", "position": {"x": 0.5, "y": 0.5}, "entranceAnimation": "bounceIn", "exitAnimation": "fade", "animationDuration": 400}}
+
+User: "Add 'Welcome' text with spring animation"
+Assistant: {"type": "addText", "params": {"startTime": 2, "endTime": 6, "text": "Welcome", "position": {"x": 0.5, "y": 0.5}, "entranceAnimation": "springIn", "exitAnimation": "springOut", "animationDuration": 500}}
+
+User: "Add title text with typewriter effect"
+Assistant: {"type": "addText", "params": {"startTime": 0, "endTime": 3, "text": "My Video Title", "position": {"x": 0.5, "y": 0.4}, "entranceAnimation": "typewriter", "animationDuration": 1500}}
 
 User: "Jump to 10 seconds"
 Assistant: {"type": "seek", "params": {"time": 10}}

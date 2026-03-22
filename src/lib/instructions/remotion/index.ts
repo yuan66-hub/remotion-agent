@@ -5,6 +5,8 @@ import type {
   TransitionEffect,
   TransitionDirection,
   EasingType,
+  TextAnimationConfig,
+  TextAnimationType,
 } from '../types';
 
 export interface TextOverlay {
@@ -16,6 +18,12 @@ export interface TextOverlay {
   position: { x: number; y: number };
   fontSize?: number;
   color?: string;
+  // 动画配置
+  animation?: TextAnimationConfig;
+  // 便捷动画选项
+  entranceAnimation?: TextAnimationType;
+  exitAnimation?: TextAnimationType;
+  animationDuration?: number;
 }
 
 export interface HighlightOverlay {
@@ -50,6 +58,10 @@ export function createTextOverlay(params: RemotionTextParams): TextOverlay {
     position: params.position,
     fontSize: params.fontSize || 48,
     color: params.color || '#FFFFFF',
+    animation: params.animation,
+    entranceAnimation: params.entranceAnimation,
+    exitAnimation: params.exitAnimation,
+    animationDuration: params.animationDuration,
   };
 }
 
