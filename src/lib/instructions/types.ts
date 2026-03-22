@@ -1,7 +1,8 @@
 export type InstructionType =
-  | 'crop' | 'splitClip' | 'deleteClip' | 'changeSpeed'  // ffmpeg
+  | 'crop' | 'splitClip' | 'deleteClip' | 'changeSpeed' | 'changeVolume'  // ffmpeg
   | 'addText' | 'addHighlight' | 'addTransition'        // Remotion
   | 'modifyText'                                          // Remotion (modify existing text)
+  | 'deleteText'                                         // Remotion (delete text overlays)
   | 'seek' | 'confirmPlan' | 'render';                   // control
 
 export interface Instruction {
@@ -32,6 +33,12 @@ export interface FFmpegSpeedParams {
   startTime: number;
   endTime: number;
   speed: number;
+}
+
+export interface FFmpegVolumeParams {
+  startTime: number;
+  endTime: number;
+  volume: number;
 }
 
 export interface RemotionTextParams {
@@ -76,4 +83,53 @@ export interface ConfirmPlanParams {
 export interface RenderParams {
   outputFormat: 'mp4' | 'webm';
   quality: 'low' | 'medium' | 'high';
+}
+
+// ==================== Extended Transition Types ====================
+
+export type TransitionEffect =
+  | 'fade' | 'dissolve' | 'slide'                    // 基础
+  | 'fade-blur' | 'dissolve-zoom' | 'slide-rotate'  // 组合
+  | 'blur' | 'zoom' | 'rotate' | 'scale';           // 增强
+
+export type TransitionDirection = 'left' | 'right' | 'up' | 'down';
+export type EasingType = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+
+export interface ExtendedTransitionParams {
+  startTime: number;
+  endTime: number;
+  effect: TransitionEffect;
+  direction?: TransitionDirection;
+  duration?: number;
+  easing?: EasingType;
+  intensity?: number;
+}
+
+// ==================== DeleteText Types ====================
+
+export interface DeleteTextParams {
+  mode: 'timeRange' | 'textIds';
+  startTime?: number;
+  endTime?: number;
+  textIds?: string[];
+}
+
+// ==================== Task Queue Types ====================
+
+export type TaskStatus =
+  | 'pending' | 'queued' | 'running'
+  | 'paused' | 'skipped' | 'completed' | 'failed';
+
+export interface TaskResult {
+  outputPath?: string;
+  overlays?: unknown[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface SubTask {
+  id: string;
+  taskId: string;
+  name: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  progress: number;
 }
