@@ -1,6 +1,6 @@
-import { getVideoMetadata, cropVideo, splitVideo, deleteClip, changeSpeed } from '@/lib/instructions/ffmpeg';
+import { getVideoMetadata, cropVideo, splitVideo, deleteClip, changeSpeed, changeVolume } from '@/lib/instructions/ffmpeg';
 import { createTextOverlay, createHighlightOverlay, createTransitionOverlay, type Overlay } from '@/lib/instructions/remotion';
-import type { Instruction, RemotionTextParams, RemotionHighlightParams, RemotionTransitionParams } from '@/lib/instructions/types';
+import type { Instruction, RemotionTextParams, RemotionHighlightParams } from '@/lib/instructions/types';
 import path from 'path';
 import fs from 'fs';
 
@@ -23,7 +23,9 @@ export class VideoProcessor {
   }
 
   static async fromFile(filePath: string, outputDir: string): Promise<VideoProcessor> {
+    console.log('[VideoProcessor.fromFile] Getting metadata for:', filePath)
     const metadata = await getVideoMetadata(filePath);
+    console.log('[VideoProcessor.fromFile] Metadata:', metadata)
     const id = path.basename(filePath, path.extname(filePath));
     return new VideoProcessor(
       {
@@ -50,7 +52,11 @@ export class VideoProcessor {
         this.overlays.push(createHighlightOverlay(instruction.params as unknown as RemotionHighlightParams));
         break;
       case 'addTransition':
-        this.overlays.push(createTransitionOverlay(instruction.params as unknown as RemotionTransitionParams));
+        this.overlays.push(createTransitionOverlay({
+          startTime: instruction.params.startTime as number,
+          endTime: instruction.params.endTime as number,
+          effect: (instruction.params.effect || instruction.params.type) as 'fade' | 'dissolve' | 'slide' | 'fade-blur' | 'dissolve-zoom' | 'slide-rotate',
+        }));
         break;
     }
   }
@@ -92,6 +98,14 @@ export class VideoProcessor {
           startTime: params.startTime as number,
           endTime: params.endTime as number,
           speed: params.speed as number,
+        });
+        break;
+
+      case 'changeVolume':
+        await changeVolume(inputPath, outputPath, {
+          startTime: params.startTime as number,
+          endTime: params.endTime as number,
+          volume: params.volume as number,
         });
         break;
 

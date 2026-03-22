@@ -22,8 +22,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
 
+    console.log('[Process API] Video:', video)
+    console.log('[Process API] Instruction:', instruction)
+
+    // Check if file exists
+    try {
+      await fs.promises.access(video.path);
+      console.log('[Process API] Video file exists:', video.path);
+    } catch {
+      console.error('[Process API] Video file NOT found:', video.path);
+      return NextResponse.json({ error: 'Video file not found on disk' }, { status: 404 });
+    }
+
     // Only process FFmpeg operations
-    const ffmpegTypes = ['crop', 'splitClip', 'deleteClip', 'changeSpeed'];
+    const ffmpegTypes = ['crop', 'splitClip', 'deleteClip', 'changeSpeed', 'changeVolume'];
     if (!ffmpegTypes.includes(instruction.type)) {
       return NextResponse.json(
         { error: `Unsupported operation type: ${instruction.type}` },

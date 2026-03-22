@@ -4,6 +4,24 @@ import path from 'path';
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
 const OUTPUT_DIR = path.join(process.cwd(), 'public', 'outputs');
 
+function getVideoExtensions(): string[] {
+  return ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
+}
+
+async function findVideoFile(videoId: string): Promise<string | null> {
+  const extensions = getVideoExtensions();
+  for (const ext of extensions) {
+    const filePath = path.join(UPLOAD_DIR, `${videoId}${ext}`);
+    try {
+      await fs.promises.access(filePath);
+      return filePath;
+    } catch {
+      // File doesn't exist, try next extension
+    }
+  }
+  return null;
+}
+
 export interface StoredVideo {
   id: string;
   filename: string;
@@ -62,7 +80,32 @@ export async function saveVideo(
 }
 
 export async function getVideo(id: string): Promise<StoredVideo | null> {
-  return videos.get(id) || null;
+  // First try memory cache
+  const cached = videos.get(id);
+  if (cached) {
+    return cached;
+  }
+
+  // Try to find video file on disk (for cases where server restarted)
+  const filePath = await findVideoFile(id);
+  if (filePath) {
+    const ext = path.extname(filePath);
+    const filename = path.basename(filePath);
+    const video: StoredVideo = {
+      id,
+      filename,
+      path: filePath,
+      url: `/uploads/${filename}`,
+      duration: 0, // Will be updated by caller
+      width: 0,
+      height: 0,
+      createdAt: new Date(),
+    };
+    videos.set(id, video);
+    return video;
+  }
+
+  return null;
 }
 
 export async function updateVideoMetadata(

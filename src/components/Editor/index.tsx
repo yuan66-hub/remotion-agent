@@ -12,6 +12,12 @@ import {
   createTransitionOverlay
 } from '@/lib/instructions/remotion'
 
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
 export function Editor() {
   const {
     video,
@@ -21,7 +27,9 @@ export function Editor() {
     updateInstruction,
     overlays,
     updateOverlay,
-    addOverlay
+    addOverlay,
+    setCropPreview,
+    cropPreview
   } = useEditorStore()
   const videoPlayerRef = useRef<VideoPlayerHandle>(null)
   const [showInstructions, setShowInstructions] = useState(false)
@@ -75,7 +83,7 @@ export function Editor() {
           createTransitionOverlay({
             startTime: inst.params.startTime as number,
             endTime: inst.params.endTime as number,
-            type: inst.params.type as 'fade' | 'dissolve' | 'slide'
+            effect: (inst.params.effect || inst.params.type) as 'fade' | 'dissolve' | 'slide' | 'fade-blur' | 'dissolve-zoom' | 'slide-rotate',
           })
         )
       }
@@ -85,15 +93,22 @@ export function Editor() {
         console.log('[Editor] Seeking to:', inst.params.startTime)
         handleSeek(inst.params.startTime)
       }
+    } else if (inst.type === 'crop') {
+      // For crop, activate preview first
+      const startTime = inst.params.startTime as number
+      const endTime = inst.params.endTime as number
+      setCropPreview({ startTime, endTime })
+      updateInstruction(instruction.id, { status: 'approved' })
+      // Seek to start of crop region
+      handleSeek(startTime)
     } else if (
-      inst.type === 'crop' ||
       inst.type === 'splitClip' ||
       inst.type === 'deleteClip' ||
-      inst.type === 'changeSpeed'
+      inst.type === 'changeSpeed' ||
+      inst.type === 'changeVolume'
     ) {
-      // For ffmpeg operations, mark as executing
+      // For other ffmpeg operations, mark as executing
       updateInstruction(instruction.id, { status: 'executing' })
-      // TODO: Call ffmpeg API to process
     }
   }
 
@@ -152,7 +167,7 @@ export function Editor() {
           createTransitionOverlay({
             startTime: inst.params.startTime as number,
             endTime: inst.params.endTime as number,
-            type: inst.params.type as 'fade' | 'dissolve' | 'slide'
+            effect: (inst.params.effect || inst.params.type) as 'fade' | 'dissolve' | 'slide' | 'fade-blur' | 'dissolve-zoom' | 'slide-rotate',
           })
         )
       }
@@ -200,8 +215,19 @@ export function Editor() {
       inst.type === 'crop' ||
       inst.type === 'splitClip' ||
       inst.type === 'deleteClip' ||
-      inst.type === 'changeSpeed'
+      inst.type === 'changeSpeed' ||
+      inst.type === 'changeVolume'
     ) {
+      // For crop, activate preview first instead of immediate execution
+      if (inst.type === 'crop') {
+        const startTime = inst.params.startTime as number
+        const endTime = inst.params.endTime as number
+        setCropPreview({ startTime, endTime })
+        updateInstruction(inst.id, { status: 'approved' })
+        handleSeek(startTime)
+        return
+      }
+
       console.log('[Editor] Auto-executing FFmpeg operation:', inst.type)
       updateInstruction(inst.id, { status: 'executing' })
 
@@ -223,6 +249,7 @@ export function Editor() {
         if (data.success) {
           console.log('[Editor] FFmpeg operation completed:', data.outputPath)
           updateInstruction(inst.id, { status: 'complete' })
+
           // Seek to start time if applicable
           if (typeof inst.params.startTime === 'number') {
             handleSeek(inst.params.startTime)
@@ -315,6 +342,83 @@ export function Editor() {
           <div className="flex-1 min-h-0">
             {video ? <VideoPlayer ref={videoPlayerRef} /> : <UploadZone />}
           </div>
+
+          {/* Crop Preview Controls */}
+          {cropPreview && (
+            <div className="mt-4 p-4 bg-cyan-900/30 border border-cyan-500/50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-cyan-400 font-mono text-sm">
+                    📹 Crop Preview
+                  </span>
+                  <span className="text-gray-300 text-sm">
+                    {formatTime(cropPreview.startTime)} →{' '}
+                    {formatTime(cropPreview.endTime)}
+                  </span>
+                  <span className="text-gray-500 text-xs">
+                    ({(cropPreview.endTime - cropPreview.startTime).toFixed(1)}
+                    s)
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCropPreview(null)}
+                    className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      // Find the approved crop instruction and execute it
+                      const cropInst = instructions.find(
+                        i => i.type === 'crop' && i.status === 'approved'
+                      )
+                      if (cropInst) {
+                        // Execute the crop via API
+                        try {
+                          const response = await fetch('/api/video/process', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              videoId: video?.id,
+                              instruction: {
+                                type: 'crop',
+                                params: cropInst.params
+                              }
+                            })
+                          })
+                          const data = await response.json()
+                          if (data.success && data.outputPath) {
+                            const { setVideo } = useEditorStore.getState()
+                            if (video) {
+                              setVideo({
+                                ...video,
+                                url: data.outputPath,
+                                duration:
+                                  cropPreview.endTime - cropPreview.startTime
+                              })
+                            }
+                            updateInstruction(cropInst.id, {
+                              status: 'complete'
+                            })
+                            setCropPreview(null)
+                          }
+                        } catch (error) {
+                          console.error(
+                            '[Editor] Crop execution failed:',
+                            error
+                          )
+                        }
+                      }
+                    }}
+                    className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors"
+                  >
+                    Confirm & Apply
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Instructions panel */}
           {showInstructions && instructions.length > 0 && (

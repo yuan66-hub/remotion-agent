@@ -11,6 +11,15 @@ import { useEditorStore } from '@/stores/editorStore'
 import { Timeline } from './Timeline'
 import { Controls } from './Controls'
 
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  const ms = Math.floor((seconds % 1) * 100)
+  return `${mins.toString().padStart(2, '0')}:${secs
+    .toString()
+    .padStart(2, '0')}.${ms.toString().padStart(2, '0')}`
+}
+
 export interface VideoPlayerHandle {
   seekTo: (time: number) => void
   getCurrentTime: () => number
@@ -24,18 +33,37 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
     setCurrentTime,
     isPlaying,
     setIsPlaying,
-    overlays
+    overlays,
+    cropPreview,
+    setIsPlaying: storeSetIsPlaying
   } = useEditorStore()
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
+  const [playbackRate, setPlaybackRate] = useState(1)
 
   // Get active overlays at current time
   const activeOverlays = overlays.filter(
-    (overlay) =>
-      currentTime >= overlay.startTime &&
-      currentTime <= overlay.endTime
+    overlay =>
+      currentTime >= overlay.startTime && currentTime <= overlay.endTime
   )
+
+  // Auto-stop when reaching crop preview end time
+  useEffect(() => {
+    if (cropPreview && currentTime >= cropPreview.endTime) {
+      storeSetIsPlaying(false)
+      if (videoRef.current) {
+        videoRef.current.pause()
+      }
+    }
+    // Clamp current time to crop range
+    if (cropPreview && currentTime < cropPreview.startTime) {
+      if (videoRef.current) {
+        videoRef.current.currentTime = cropPreview.startTime
+      }
+      setCurrentTime(cropPreview.startTime)
+    }
+  }, [currentTime, cropPreview, storeSetIsPlaying, setCurrentTime])
 
   useImperativeHandle(ref, () => ({
     seekTo: (time: number) => {
@@ -91,6 +119,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
 
   const togglePlay = () => {
     setIsPlaying(!isPlaying)
+  }
+
+  const handlePlaybackRateChange = (rate: number) => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = rate
+      setPlaybackRate(rate)
+    }
   }
 
   if (!video) {
@@ -177,7 +212,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
         />
 
         {/* Render active overlays */}
-        {activeOverlays.map((overlay) => {
+        {activeOverlays.map(overlay => {
           if (overlay.type === 'text') {
             return (
               <div
@@ -214,6 +249,64 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
           return null
         })}
 
+        {/* Crop preview region overlay */}
+        {cropPreview && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {/* Dark overlay for regions outside crop */}
+            {/* Top darkened region */}
+            <div
+              className="absolute bg-black/60"
+              style={{
+                top: 0,
+                left: 0,
+                right: 0,
+                height: `${(cropPreview.startTime / duration) * 100}%`
+              }}
+            />
+            {/* Bottom darkened region */}
+            <div
+              className="absolute bg-black/60"
+              style={{
+                bottom: 0,
+                left: 0,
+                right: 0,
+                top: `${(cropPreview.endTime / duration) * 100}%`
+              }}
+            />
+            {/* Crop region border */}
+            <div
+              className="absolute border-2 border-cyan-400"
+              style={{
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '100%',
+                boxShadow:
+                  '0 0 20px rgba(0, 255, 255, 0.5), inset 0 0 20px rgba(0, 255, 255, 0.1)'
+              }}
+            />
+            {/* Crop region labels */}
+            <div
+              className="absolute bg-cyan-500/90 text-black text-xs px-2 py-1 rounded font-mono"
+              style={{
+                top: 4,
+                left: 4
+              }}
+            >
+              IN: {formatTime(cropPreview.startTime)}
+            </div>
+            <div
+              className="absolute bg-cyan-500/90 text-black text-xs px-2 py-1 rounded font-mono"
+              style={{
+                top: 4,
+                right: 4
+              }}
+            >
+              OUT: {formatTime(cropPreview.endTime)}
+            </div>
+          </div>
+        )}
+
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
@@ -232,6 +325,7 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
           currentTime={currentTime}
           duration={duration}
           onSeek={handleSeek}
+          cropPreview={cropPreview}
         />
       </div>
 
@@ -243,10 +337,12 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
           duration={duration}
           volume={volume}
           isMuted={isMuted}
+          playbackRate={playbackRate}
           onTogglePlay={togglePlay}
           onSeek={handleSeek}
           onVolumeChange={handleVolumeChange}
           onToggleMute={toggleMute}
+          onPlaybackRateChange={handlePlaybackRateChange}
         />
       </div>
     </div>

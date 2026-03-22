@@ -14,10 +14,12 @@ const ACTION_LABELS: Record<InstructionType, string> = {
   splitClip: 'Split clip',
   deleteClip: 'Delete clip',
   changeSpeed: 'Change speed',
+  changeVolume: 'Change volume',
   addText: 'Add text',
   addHighlight: 'Add highlight',
   addTransition: 'Add transition',
   modifyText: 'Modify text',
+  deleteText: 'Delete text',
   seek: 'Jump to time',
   confirmPlan: 'Confirm plan',
   render: 'Render video',
@@ -59,7 +61,9 @@ function formatParams(type: InstructionType, params: Record<string, unknown>): s
     case 'splitClip':
     case 'deleteClip':
     case 'changeSpeed':
-      return `${params.startTime}s - ${params.endTime}s`;
+      return `${params.startTime}s - ${params.endTime}s @ ${params.speed}x`;
+    case 'changeVolume':
+      return `${params.startTime}s - ${params.endTime}s @ ${(params.volume as number) * 100}%`;
     case 'addText':
       return `"${params.text}" at ${params.startTime}s`;
     case 'addHighlight':

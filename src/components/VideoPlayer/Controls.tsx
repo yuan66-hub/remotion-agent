@@ -8,10 +8,12 @@ interface ControlsProps {
   duration: number;
   volume: number;
   isMuted: boolean;
+  playbackRate: number;
   onTogglePlay: () => void;
   onSeek: (time: number) => void;
   onVolumeChange: (volume: number) => void;
   onToggleMute: () => void;
+  onPlaybackRateChange: (rate: number) => void;
 }
 
 export function Controls({
@@ -20,10 +22,12 @@ export function Controls({
   duration,
   volume,
   isMuted,
+  playbackRate,
   onTogglePlay,
   onSeek,
   onVolumeChange,
   onToggleMute,
+  onPlaybackRateChange,
 }: ControlsProps) {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -101,6 +105,37 @@ export function Controls({
           {formatTime(currentTime)} <span style={{ color: 'rgba(255, 255, 255, 0.3)' }}>/</span>{' '}
           <span style={{ color: 'rgba(255, 255, 255, 0.5)' }}>{formatTime(duration)}</span>
         </span>
+
+        <div className="relative">
+          <select
+            value={playbackRate}
+            onChange={(e) => onPlaybackRateChange(parseFloat(e.target.value))}
+            className="appearance-none px-2 py-1 pr-6 rounded-lg text-sm font-mono cursor-pointer transition-all duration-200"
+            style={{
+              background: 'rgba(0, 212, 255, 0.1)',
+              border: '1px solid rgba(0, 212, 255, 0.3)',
+              color: '#00d4ff',
+              outline: 'none',
+            }}
+            title="Playback speed"
+          >
+            <option value={0.25}>0.25x</option>
+            <option value={0.5}>0.5x</option>
+            <option value={0.75}>0.75x</option>
+            <option value={1}>1x</option>
+            <option value={1.25}>1.25x</option>
+            <option value={1.5}>1.5x</option>
+            <option value={2}>2x</option>
+          </select>
+          <div
+            className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ color: 'rgba(0, 212, 255, 0.6)' }}
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
 
         <div className="flex-1" />
 
