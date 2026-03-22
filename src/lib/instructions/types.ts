@@ -59,7 +59,7 @@ export interface RemotionHighlightParams {
 export interface RemotionTransitionParams {
   startTime: number;
   endTime: number;
-  type: 'fade' | 'dissolve' | 'slide';
+  type: TransitionEffect;
 }
 
 export interface RemotionModifyTextParams {

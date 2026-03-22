@@ -1,4 +1,11 @@
-import type { RemotionTextParams, RemotionHighlightParams, RemotionTransitionParams } from '../types';
+import type {
+  RemotionTextParams,
+  RemotionHighlightParams,
+  ExtendedTransitionParams,
+  TransitionEffect,
+  TransitionDirection,
+  EasingType,
+} from '../types';
 
 export interface TextOverlay {
   id: string;
@@ -24,7 +31,11 @@ export interface TransitionOverlay {
   type: 'transition';
   startTime: number;
   endTime: number;
-  transitionType: 'fade' | 'dissolve' | 'slide';
+  transitionType: TransitionEffect;
+  direction?: TransitionDirection;
+  duration?: number;
+  easing?: EasingType;
+  intensity?: number;
 }
 
 export type Overlay = TextOverlay | HighlightOverlay | TransitionOverlay;
@@ -52,13 +63,17 @@ export function createHighlightOverlay(params: RemotionHighlightParams): Highlig
   };
 }
 
-export function createTransitionOverlay(params: RemotionTransitionParams): TransitionOverlay {
+export function createTransitionOverlay(params: ExtendedTransitionParams): TransitionOverlay {
   return {
     id: `transition_${Date.now()}`,
     type: 'transition',
     startTime: params.startTime,
     endTime: params.endTime,
-    transitionType: params.type,
+    transitionType: params.effect,
+    direction: params.direction || 'left',
+    duration: params.duration || 1,
+    easing: params.easing || 'ease-in-out',
+    intensity: params.intensity ?? 1,
   };
 }
 
@@ -78,4 +93,28 @@ export function applyTransitions(
   // For now, just return sorted overlays
   // A full implementation would handle overlapping transitions
   return sorted;
+}
+
+export function getTransitionFilter(
+  effect: TransitionEffect,
+  progress: number,
+  intensity: number = 1
+): string {
+  const p = Math.min(1, Math.max(0, progress));
+  switch (effect) {
+    case 'fade-blur':
+      return `blur(${p * intensity * 10}px)`;
+    case 'dissolve-zoom':
+      return `blur(${p * intensity * 5}px) scale(${1 + p * 0.2})`;
+    case 'blur':
+      return `blur(${p * intensity * 20}px)`;
+    case 'zoom':
+      return `scale(${1 + p * intensity * 0.5})`;
+    case 'rotate':
+      return `rotate(${p * intensity * 15}deg)`;
+    case 'scale':
+      return `scale(${1 - p * intensity * 0.3 + 1})`;
+    default:
+      return 'none';
+  }
 }
