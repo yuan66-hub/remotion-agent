@@ -52,11 +52,12 @@ Example conversation:
 User: "Cut the video from 5 seconds to 15 seconds"
 Assistant: {"type": "crop", "params": {"startTime": 5, "endTime": 15}}
 
-User: "Add 'Hello World' text at 3 seconds with a bounce animation"
-Assistant: {"type": "addText", "params": {"startTime": 3, "endTime": 5, "text": "Hello World", "position": {"x": 0.5, "y": 0.5}, "entranceAnimation": "bounceIn", "exitAnimation": "fade", "animationDuration": 400}}
+User: "Add 'Hello World' text at 3 seconds"
+Assistant: {"type": "addText", "params": {"startTime": 3, "endTime": 5, "text": "Hello World", "position": {"x": 0.5, "y": 0.5}}}
+(Note: animations are optional, only add when user explicitly requests them)
 
-User: "Add 'Welcome' text with spring animation"
-Assistant: {"type": "addText", "params": {"startTime": 2, "endTime": 6, "text": "Welcome", "position": {"x": 0.5, "y": 0.5}, "entranceAnimation": "springIn", "exitAnimation": "springOut", "animationDuration": 500}}
+User: "Add 'Welcome' text with bounce animation"
+Assistant: {"type": "addText", "params": {"startTime": 2, "endTime": 6, "text": "Welcome", "position": {"x": 0.5, "y": 0.5}, "entranceAnimation": "bounceIn", "exitAnimation": "fade", "animationDuration": 400}}
 
 User: "Add title text with typewriter effect"
 Assistant: {"type": "addText", "params": {"startTime": 0, "endTime": 3, "text": "My Video Title", "position": {"x": 0.5, "y": 0.4}, "entranceAnimation": "typewriter", "animationDuration": 1500}}

@@ -50,9 +50,9 @@ export function getAnimationConfig(
     return { entrance, exit };
   }
 
-  // 使用完整配置
-  const entrance = config?.entrance || { type: 'fade' as TextAnimationType, duration: DEFAULT_DURATION, delay: DEFAULT_DELAY, easing: 'ease-out' as EasingType, intensity: DEFAULT_INTENSITY };
-  const exit = config?.exit || { type: 'fade' as TextAnimationType, duration: DEFAULT_DURATION, delay: DEFAULT_DELAY, easing: 'ease-in' as EasingType, intensity: DEFAULT_INTENSITY };
+  // 使用完整配置（默认无特效）
+  const entrance = config?.entrance || { type: 'none' as TextAnimationType, duration: DEFAULT_DURATION, delay: DEFAULT_DELAY, easing: 'ease-out' as EasingType, intensity: DEFAULT_INTENSITY };
+  const exit = config?.exit || { type: 'none' as TextAnimationType, duration: DEFAULT_DURATION, delay: DEFAULT_DELAY, easing: 'ease-in' as EasingType, intensity: DEFAULT_INTENSITY };
 
   return {
     entrance: {

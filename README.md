@@ -45,6 +45,27 @@ ALIBABA_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 
 ---
 
+## 效果演示
+
+以下是 AI Video Editing Agent 的主要功能演示：
+
+### 1. 智能视频上传与分析
+![智能视频上传与分析](./docs/images/image_01.png)
+
+### 2. 自然语言指令编辑
+![自然语言指令编辑](./docs/images/image_02.png)
+
+### 3. 实时预览与调整
+![实时预览与调整](./docs/images/image_03.png)
+
+### 4. 叠加层效果展示
+![叠加层效果展示](./docs/images/image_04.png)
+
+### 5. 最终渲染输出
+![最终渲染输出](./docs/images/image_05.png)
+
+---
+
 ## 架构总览
 
 > 完整架构文档包含更详细的架构图、数据流程图和时序图：[架构文档](./docs/superpowers/specs/2026-03-22-architecture.md)
