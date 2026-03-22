@@ -95,6 +95,15 @@ interface TaskResult {
   overlays?: Overlay[];
   metadata?: Record<string, any>;
 }
+
+// SubTask - 子任务（复杂任务的子步骤）
+export interface SubTask {
+  id: string;
+  taskId: string;
+  name: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  progress: number;
+}
 ```
 
 - [ ] **Step 4: Commit**
@@ -157,7 +166,24 @@ git commit -m "store: add deleteTextOverlay method to editorStore"
 **Files:**
 - Modify: `src/lib/instructions/remotion/index.ts`
 
-- [ ] **Step 1: 更新 createTransitionOverlay 支持扩展参数**
+- [ ] **Step 1: 更新 TransitionOverlay 类型**
+
+```typescript
+// 修改 src/lib/instructions/remotion/index.ts 中的 TransitionOverlay
+export interface TransitionOverlay {
+  id: string;
+  type: 'transition';
+  startTime: number;
+  endTime: number;
+  transitionType: TransitionEffect;  // 使用扩展的类型
+  direction?: TransitionDirection;
+  duration?: number;
+  easing?: EasingType;
+  intensity?: number;
+}
+```
+
+- [ ] **Step 2: 更新 createTransitionOverlay 支持扩展参数**
 
 ```typescript
 // 修改函数签名
@@ -178,7 +204,7 @@ export function createTransitionOverlay(
 }
 ```
 
-- [ ] **Step 2: 添加组合转场滤镜函数**
+- [ ] **Step 3: 添加组合转场滤镜函数**
 
 ```typescript
 // 获取转场 CSS 滤镜
@@ -468,6 +494,21 @@ git commit -m "store: create planStore for task management"
 
 **Files:**
 - Create: `src/lib/executor/TaskExecutor.ts`
+- Note: 需要先创建 `src/lib/executor/` 目录
+
+- [ ] **Step 0: 验证 API 端点**
+
+首先检查 `/api/video/process` 端点是否存在：
+```bash
+ls -la src/app/api/video/process/
+```
+
+如果目录不存在，创建它：
+```bash
+mkdir -p src/app/api/video/process
+```
+
+然后添加处理 deleteText 指令的逻辑到 `route.ts`（参考 Task 4 的指令解析）。
 
 - [ ] **Step 1: 创建 TaskExecutor 类**
 
@@ -568,11 +609,52 @@ class TaskExecutor {
   }
   
   private async executeRemotionTask(task: any): Promise<void> {
-    // 模拟进度更新
-    for (let i = 0; i <= 100; i += 20) {
-      await this.sleep(50);
-      usePlanStore.getState().updateTaskStatus(task.id, 'running', i);
+    const editorStore = useEditorStore.getState();
+    const { instructionType, params } = task;
+    
+    let overlay;
+    switch (instructionType) {
+      case 'addText':
+        overlay = {
+          id: `text_${Date.now()}`,
+          type: 'text',
+          startTime: params.startTime,
+          endTime: params.endTime,
+          text: params.text,
+          position: params.position || { x: 0.5, y: 0.5 },
+          fontSize: params.fontSize || 48,
+          color: params.color || '#FFFFFF',
+        };
+        break;
+      case 'addHighlight':
+        overlay = {
+          id: `highlight_${Date.now()}`,
+          type: 'highlight',
+          startTime: params.startTime,
+          endTime: params.endTime,
+          color: params.color || '#FFFF00',
+        };
+        break;
+      case 'addTransition':
+        overlay = {
+          id: `transition_${Date.now()}`,
+          type: 'transition',
+          startTime: params.startTime,
+          endTime: params.endTime,
+          transitionType: params.effect || params.type,
+          direction: params.direction || 'left',
+          duration: params.duration || 1,
+          easing: params.easing || 'ease-in-out',
+          intensity: params.intensity ?? 1,
+        };
+        break;
+      default:
+        throw new Error(`Unknown remotion type: ${instructionType}`);
     }
+    
+    // 添加到 editorStore
+    editorStore.addOverlay(overlay);
+    usePlanStore.getState().updateTaskResult(task.id, { overlayId: overlay.id });
   }
   
   private async executeFFmpegTask(task: any): Promise<void> {
@@ -909,6 +991,53 @@ git commit -m "ui: create TaskItem component"
 
 ---
 
+## Task 8b: 创建 SubTaskItem UI 组件
+
+**Files:**
+- Create: `src/components/ChatPanel/SubTaskItem.tsx`
+
+- [ ] **Step 1: 创建 SubTaskItem 组件**
+
+```tsx
+'use client';
+
+import { SubTask } from '@/lib/instructions/types';
+
+interface SubTaskItemProps {
+  subTask: SubTask;
+}
+
+const STATUS_ICONS: Record<string, string> = {
+  pending: '○',
+  running: '◐',
+  completed: '●',
+  failed: '✕',
+};
+
+export default function SubTaskItem({ subTask }: SubTaskItemProps) {
+  return (
+    <div className="flex items-center gap-2 pl-6 text-sm">
+      <span className={subTask.status === 'running' ? 'animate-pulse' : ''}>
+        {STATUS_ICONS[subTask.status]}
+      </span>
+      <span className="text-gray-300">{subTask.name}</span>
+      {subTask.status === 'running' && (
+        <span className="text-xs text-blue-400">{subTask.progress}%</span>
+      )}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add src/components/ChatPanel/SubTaskItem.tsx
+git commit -m "ui: create SubTaskItem component"
+```
+
+---
+
 ## Task 9: 集成 TaskQueue 到 ChatPanel
 
 **Files:**
@@ -916,38 +1045,44 @@ git commit -m "ui: create TaskItem component"
 
 - [ ] **Step 1: 添加 TaskQueue 导入和集成**
 
+首先检查 ChatPanel 的导出方式：
+```bash
+head -20 src/components/ChatPanel/index.tsx
+```
+
+如果 ChatPanel 是命名导出 (`export function ChatPanel`)，修改导入为：
 ```tsx
-// 在 imports 中添加
+import { ChatPanel } from './ChatPanel';
 import TaskQueue from './TaskQueue';
 import { usePlanStore } from '@/stores/planStore';
+```
 
-// 在组件中添加
-export default function ChatPanel() {
-  // ... 现有代码
-  
-  const { currentPlan } = usePlanStore();
-  const hasPlan = !!currentPlan;
-  
-  // 在 return 的 JSX 中，找到消息列表下方添加
-  return (
-    <div className="flex flex-col h-full">
-      {/* 现有消息列表 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
-          <Message key={msg.id} message={msg} />
-        ))}
-      </div>
-      
-      {/* 新增: TaskQueue */}
-      {hasPlan && <TaskQueue />}
-      
-      {/* 输入框 */}
-      <div className="p-4 border-t border-gray-700">
-        {/* ... */}
-      </div>
+如果 ChatPanel 是默认导出 (`export default function ChatPanel`)，保持现有导入方式。
+
+然后在组件中添加：
+```tsx
+const { currentPlan } = usePlanStore();
+const hasPlan = !!currentPlan;
+
+// 在 return 的 JSX 中，找到消息列表下方添加
+return (
+  <div className="flex flex-col h-full">
+    {/* 现有消息列表 */}
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {messages.map((msg) => (
+        <Message key={msg.id} message={msg} />
+      ))}
     </div>
-  );
-}
+
+    {/* 新增: TaskQueue */}
+    {hasPlan && <TaskQueue />}
+
+    {/* 输入框 */}
+    <div className="p-4 border-t border-gray-700">
+      {/* ... */}
+    </div>
+  </div>
+);
 ```
 
 - [ ] **Step 2: Commit**
