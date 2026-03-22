@@ -319,6 +319,61 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
               />
             )
           }
+          if (overlay.type === 'transition') {
+            const transitionEffects: Record<string, { icon: string; label: string; bg: string }> = {
+              'fade': { icon: '◐', label: 'FADE', bg: 'rgba(139, 92, 246, 0.3)' },
+              'dissolve': { icon: '◑', label: 'DISSOLVE', bg: 'rgba(236, 72, 153, 0.3)' },
+              'slide': { icon: '→', label: 'SLIDE', bg: 'rgba(34, 211, 238, 0.3)' },
+              'fade-blur': { icon: '◔', label: 'FADE-BLUR', bg: 'rgba(168, 85, 247, 0.3)' },
+              'dissolve-zoom': { icon: '⊙', label: 'DISSOLVE-ZOOM', bg: 'rgba(251, 146, 60, 0.3)' },
+              'slide-rotate': { icon: '↻', label: 'SLIDE-ROT', bg: 'rgba(20, 184, 166, 0.3)' }
+            }
+            const effect = transitionEffects[overlay.transitionType] || { icon: '✦', label: 'TRANS', bg: 'rgba(99, 102, 241, 0.3)' }
+            const progress = duration > 0 ? ((currentTime - overlay.startTime) / (overlay.endTime - overlay.startTime)) * 100 : 0
+            return (
+              <div
+                key={overlay.id}
+                className="absolute inset-0 pointer-events-none overflow-hidden"
+                style={{
+                  background: effect.bg,
+                  border: `2px solid ${overlay.transitionType === 'fade' ? '#8B5CF6' : overlay.transitionType === 'dissolve' ? '#EC4899' : '#06B6D4'}`
+                }}
+              >
+                {/* Animated transition indicator */}
+                <div
+                  className="absolute inset-0 opacity-50"
+                  style={{
+                    background: `linear-gradient(90deg, 
+                      transparent 0%, 
+                      rgba(255,255,255,0.4) ${progress}%, 
+                      rgba(255,255,255,0.6) ${Math.min(progress + 10, 100)}%, 
+                      transparent 100%)`
+                  }}
+                />
+                {/* Transition label badge */}
+                <div
+                  className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono font-bold"
+                  style={{
+                    background: 'rgba(0,0,0,0.7)',
+                    color: overlay.transitionType === 'fade' ? '#C4B5FD' : overlay.transitionType === 'dissolve' ? '#F9A8D4' : '#67E8F9'
+                  }}
+                >
+                  <span>{effect.icon}</span>
+                  <span>{effect.label}</span>
+                </div>
+                {/* Time indicator */}
+                <div
+                  className="absolute bottom-2 right-2 px-2 py-1 rounded text-xs font-mono"
+                  style={{
+                    background: 'rgba(0,0,0,0.7)',
+                    color: '#9CA3AF'
+                  }}
+                >
+                  {overlay.startTime.toFixed(1)}s → {overlay.endTime.toFixed(1)}s
+                </div>
+              </div>
+            )
+          }
           return null
         })}
 
