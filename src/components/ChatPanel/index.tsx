@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
+import { usePlanStore } from '@/stores/planStore'
 import { Message } from './Message'
+import TaskQueue from './TaskQueue'
 
 interface ChatPanelProps {
   onSeek: (time: number) => void
@@ -13,7 +15,9 @@ export function ChatPanel({ onSeek, onExecuteInstruction }: ChatPanelProps) {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const { messages, video, addMessage, addInstruction } = useEditorStore()
+  const { messages, video, overlays, addMessage, addInstruction } = useEditorStore()
+  const { currentPlan } = usePlanStore()
+  const hasPlan = !!currentPlan
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -44,7 +48,8 @@ export function ChatPanel({ onSeek, onExecuteInstruction }: ChatPanelProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: messagesToSend,
-          videoId: video.id
+          videoId: video.id,
+          overlays: overlays.filter(o => o.type === 'text')
         })
       })
 
@@ -138,6 +143,8 @@ export function ChatPanel({ onSeek, onExecuteInstruction }: ChatPanelProps) {
           <div ref={messagesEndRef} />
         </div>
       </div>
+
+      {hasPlan && <TaskQueue />}
 
       <form onSubmit={handleSubmit} className="p-4 border-t border-gray-700">
         <div className="flex gap-2">
