@@ -97,10 +97,33 @@ IMPORTANT: When specifying endTime for operations on the entire video, use the e
     try {
       const text = result.text.trim()
       console.log('[Chat API] Raw response:', text)
-      const jsonMatch = text.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        console.log('[Chat API] JSON match:', jsonMatch[0])
-        parsedResponse = JSON.parse(jsonMatch[0])
+
+      // More robust JSON extraction that handles nested braces
+      const jsonObjects: string[] = []
+      let braceCount = 0
+      let start = -1
+
+      for (let i = 0; i < text.length; i++) {
+        if (text[i] === '{') {
+          if (braceCount === 0) start = i
+          braceCount++
+        } else if (text[i] === '}') {
+          braceCount--
+          if (braceCount === 0 && start !== -1) {
+            jsonObjects.push(text.slice(start, i + 1))
+            start = -1
+          }
+        }
+      }
+
+      console.log('[Chat API] JSON objects found:', jsonObjects.length)
+
+      if (jsonObjects.length > 0) {
+        if (jsonObjects.length === 1) {
+          parsedResponse = JSON.parse(jsonObjects[0])
+        } else {
+          parsedResponse = jsonObjects.map((j) => JSON.parse(j))
+        }
         console.log('[Chat API] Parsed:', parsedResponse)
       } else {
         console.log('[Chat API] No JSON found in response')

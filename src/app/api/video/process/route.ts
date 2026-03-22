@@ -49,9 +49,15 @@ export async function POST(request: NextRequest) {
     const processor = await VideoProcessor.fromFile(video.path, outputDir);
     const outputPath = await processor.executeInstruction(instruction as Instruction);
 
+    // Remove 'public' from the path since Next.js serves public folder at root
+    let publicPath = outputPath.replace(process.cwd(), '').replace(/\\/g, '/');
+    if (publicPath.startsWith('/public')) {
+      publicPath = publicPath.replace('/public', '');
+    }
+
     return NextResponse.json({
       success: true,
-      outputPath: outputPath.replace(process.cwd(), '').replace(/\\/g, '/'),
+      outputPath: publicPath,
       message: `Successfully processed video with ${instruction.type}`,
     });
   } catch (error) {

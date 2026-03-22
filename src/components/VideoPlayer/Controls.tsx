@@ -106,35 +106,22 @@ export function Controls({
           <span style={{ color: 'rgba(255, 255, 255, 0.5)' }}>{formatTime(duration)}</span>
         </span>
 
-        <div className="relative">
-          <select
+        <div className="relative w-24 h-6 flex items-center">
+          <input
+            type="range"
+            min="0.25"
+            max="3"
+            step="0.25"
             value={playbackRate}
             onChange={(e) => onPlaybackRateChange(parseFloat(e.target.value))}
-            className="appearance-none px-2 py-1 pr-6 rounded-lg text-sm font-mono cursor-pointer transition-all duration-200"
+            className="w-full h-1 rounded-full appearance-none cursor-pointer"
             style={{
-              background: 'rgba(0, 212, 255, 0.1)',
-              border: '1px solid rgba(0, 212, 255, 0.3)',
-              color: '#00d4ff',
-              outline: 'none',
+              background: `linear-gradient(to right, #00d4ff ${((playbackRate - 0.25) / 2.75) * 100}%, rgba(255, 255, 255, 0.2) ${((playbackRate - 0.25) / 2.75) * 100}%)`,
             }}
-            title="Playback speed"
-          >
-            <option value={0.25}>0.25x</option>
-            <option value={0.5}>0.5x</option>
-            <option value={0.75}>0.75x</option>
-            <option value={1}>1x</option>
-            <option value={1.25}>1.25x</option>
-            <option value={1.5}>1.5x</option>
-            <option value={2}>2x</option>
-          </select>
-          <div
-            className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ color: 'rgba(0, 212, 255, 0.6)' }}
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
+          />
+          <span className="ml-2 text-xs font-mono" style={{ color: '#00d4ff', minWidth: '36px' }}>
+            {playbackRate}x
+          </span>
         </div>
 
         <div className="flex-1" />
@@ -160,19 +147,22 @@ export function Controls({
               </svg>
             )}
           </button>
-          <div className="relative w-20 h-6 flex items-center">
+          <div className="relative w-24 h-6 flex items-center">
             <input
               type="range"
               min="0"
-              max="1"
-              step="0.01"
+              max="2"
+              step="0.05"
               value={isMuted ? 0 : volume}
               onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
               className="w-full h-1 rounded-full appearance-none cursor-pointer"
               style={{
-                background: `linear-gradient(to right, #00d4ff ${(isMuted ? 0 : volume) * 100}%, rgba(255, 255, 255, 0.2) ${(isMuted ? 0 : volume) * 100}%)`,
+                background: `linear-gradient(to right, #00d4ff ${(isMuted ? 0 : volume) * 50}%, rgba(255, 255, 255, 0.2) ${(isMuted ? 0 : volume) * 50}%)`,
               }}
             />
+            <span className="ml-2 text-xs font-mono" style={{ color: '#00d4ff', minWidth: '32px' }}>
+              {Math.round((isMuted ? 0 : volume) * 100)}%
+            </span>
           </div>
         </div>
       </div>

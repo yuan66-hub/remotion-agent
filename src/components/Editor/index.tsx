@@ -11,6 +11,7 @@ import {
   createHighlightOverlay,
   createTransitionOverlay
 } from '@/lib/instructions/remotion'
+import { getGlobalAudioController } from '@/lib/audio/AudioController'
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -29,12 +30,19 @@ export function Editor() {
     updateOverlay,
     addOverlay,
     setCropPreview,
-    cropPreview
+    cropPreview,
+    setVolumePreview,
+    volumePreview,
+    setSpeedPreview,
+    speedPreview
   } = useEditorStore()
   const videoPlayerRef = useRef<VideoPlayerHandle>(null)
   const [showInstructions, setShowInstructions] = useState(false)
   const [selectedInstruction, setSelectedInstruction] =
     useState<Instruction | null>(null)
+  const [cropLoading, setCropLoading] = useState(false)
+  const [volumeLoading, setVolumeLoading] = useState(false)
+  const [speedLoading, setSpeedLoading] = useState(false)
 
   const handleSeek = (time: number) => {
     videoPlayerRef.current?.seekTo(time)
@@ -83,7 +91,13 @@ export function Editor() {
           createTransitionOverlay({
             startTime: inst.params.startTime as number,
             endTime: inst.params.endTime as number,
-            effect: (inst.params.effect || inst.params.type) as 'fade' | 'dissolve' | 'slide' | 'fade-blur' | 'dissolve-zoom' | 'slide-rotate',
+            effect: (inst.params.effect || inst.params.type) as
+              | 'fade'
+              | 'dissolve'
+              | 'slide'
+              | 'fade-blur'
+              | 'dissolve-zoom'
+              | 'slide-rotate'
           })
         )
       }
@@ -101,11 +115,27 @@ export function Editor() {
       updateInstruction(instruction.id, { status: 'approved' })
       // Seek to start of crop region
       handleSeek(startTime)
+    } else if (inst.type === 'changeVolume') {
+      // For changeVolume, activate real-time preview
+      const startTime = inst.params.startTime as number
+      const endTime = inst.params.endTime as number
+      const volume = inst.params.volume as number
+      setVolumePreview({ startTime, endTime, volume })
+      updateInstruction(instruction.id, { status: 'approved' })
+      // Seek to start of volume change region
+      handleSeek(startTime)
+    } else if (inst.type === 'changeSpeed') {
+      // For changeSpeed, activate real-time preview
+      const startTime = inst.params.startTime as number
+      const endTime = inst.params.endTime as number
+      const speed = inst.params.speed as number
+      setSpeedPreview({ startTime, endTime, speed })
+      updateInstruction(instruction.id, { status: 'approved' })
+      // Seek to start of speed change region
+      handleSeek(startTime)
     } else if (
       inst.type === 'splitClip' ||
-      inst.type === 'deleteClip' ||
-      inst.type === 'changeSpeed' ||
-      inst.type === 'changeVolume'
+      inst.type === 'deleteClip'
     ) {
       // For other ffmpeg operations, mark as executing
       updateInstruction(instruction.id, { status: 'executing' })
@@ -167,7 +197,13 @@ export function Editor() {
           createTransitionOverlay({
             startTime: inst.params.startTime as number,
             endTime: inst.params.endTime as number,
-            effect: (inst.params.effect || inst.params.type) as 'fade' | 'dissolve' | 'slide' | 'fade-blur' | 'dissolve-zoom' | 'slide-rotate',
+            effect: (inst.params.effect || inst.params.type) as
+              | 'fade'
+              | 'dissolve'
+              | 'slide'
+              | 'fade-blur'
+              | 'dissolve-zoom'
+              | 'slide-rotate'
           })
         )
       }
@@ -223,6 +259,28 @@ export function Editor() {
         const startTime = inst.params.startTime as number
         const endTime = inst.params.endTime as number
         setCropPreview({ startTime, endTime })
+        updateInstruction(inst.id, { status: 'approved' })
+        handleSeek(startTime)
+        return
+      }
+
+      // For changeVolume, activate real-time preview
+      if (inst.type === 'changeVolume') {
+        const startTime = inst.params.startTime as number
+        const endTime = inst.params.endTime as number
+        const volume = inst.params.volume as number
+        setVolumePreview({ startTime, endTime, volume })
+        updateInstruction(inst.id, { status: 'approved' })
+        handleSeek(startTime)
+        return
+      }
+
+      // For changeSpeed, activate real-time preview
+      if (inst.type === 'changeSpeed') {
+        const startTime = inst.params.startTime as number
+        const endTime = inst.params.endTime as number
+        const speed = inst.params.speed as number
+        setSpeedPreview({ startTime, endTime, speed })
         updateInstruction(inst.id, { status: 'approved' })
         handleSeek(startTime)
         return
@@ -374,6 +432,7 @@ export function Editor() {
                         i => i.type === 'crop' && i.status === 'approved'
                       )
                       if (cropInst) {
+                        setCropLoading(true)
                         // Execute the crop via API
                         try {
                           const response = await fetch('/api/video/process', {
@@ -408,12 +467,228 @@ export function Editor() {
                             '[Editor] Crop execution failed:',
                             error
                           )
+                        } finally {
+                          setCropLoading(false)
                         }
                       }
                     }}
-                    className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors"
+                    disabled={cropLoading}
+                    className="px-3 py-1.5 text-xs bg-cyan-600 hover:bg-cyan-700 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                   >
-                    Confirm & Apply
+                    {cropLoading ? (
+                      <>
+                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Confirm & Apply'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Volume Preview Controls */}
+          {volumePreview && (
+            <div className="mt-4 p-4 bg-purple-900/30 border border-purple-500/50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-purple-400 font-mono text-sm">
+                    🔊 Volume Preview
+                  </span>
+                  <span className="text-gray-300 text-sm">
+                    {formatTime(volumePreview.startTime)} →{' '}
+                    {formatTime(volumePreview.endTime)}
+                  </span>
+                  <span className="text-purple-400 font-mono text-sm">
+                    {Math.round(volumePreview.volume * 100)}%
+                  </span>
+                  <span className="text-gray-500 text-xs">
+                    (
+                    {(volumePreview.endTime - volumePreview.startTime).toFixed(
+                      1
+                    )}
+                    s)
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      // Reset volume to default when canceling
+                      if (videoPlayerRef.current) {
+                        const audioCtrl = getGlobalAudioController()
+                        audioCtrl.setVolume(1)
+                      }
+                      setVolumePreview(null)
+                      // Mark instruction as rejected
+                      const volInst = instructions.find(
+                        i =>
+                          i.type === 'changeVolume' && i.status === 'approved'
+                      )
+                      if (volInst) {
+                        updateInstruction(volInst.id, {
+                          status: 'error',
+                          error: 'cancelled by user'
+                        })
+                      }
+                    }}
+                    className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      // Find the approved changeVolume instruction and execute it
+                      const volInst = instructions.find(
+                        i =>
+                          i.type === 'changeVolume' && i.status === 'approved'
+                      )
+                      if (volInst) {
+                        setVolumeLoading(true)
+                        // Execute the volume change via API
+                        try {
+                          const response = await fetch('/api/video/process', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              videoId: video?.id,
+                              instruction: {
+                                type: 'changeVolume',
+                                params: volInst.params
+                              }
+                            })
+                          })
+                          const data = await response.json()
+                          if (data.success && data.outputPath) {
+                            const { setVideo } = useEditorStore.getState()
+                            if (video) {
+                              setVideo({
+                                ...video,
+                                url: data.outputPath
+                              })
+                            }
+                            updateInstruction(volInst.id, {
+                              status: 'complete'
+                            })
+                            // Reset volume to 100% after applying
+                            const audioCtrl = getGlobalAudioController()
+                            audioCtrl.setVolume(1)
+                            setVolumePreview(null)
+                          }
+                        } catch (error) {
+                          console.error(
+                            '[Editor] Volume change execution failed:',
+                            error
+                          )
+                        } finally {
+                          setVolumeLoading(false)
+                        }
+                      }
+                    }}
+                    disabled={volumeLoading}
+                    className="px-3 py-1.5 text-xs bg-purple-600 hover:bg-purple-700 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    {volumeLoading ? (
+                      <>
+                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Confirm & Apply'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Speed Preview Controls */}
+          {speedPreview && (
+            <div className="mt-4 p-4 bg-orange-900/30 border border-orange-500/50 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-orange-400 font-mono text-sm">
+                    ⚡ Speed Preview
+                  </span>
+                  <span className="text-gray-300 text-sm">
+                    {formatTime(speedPreview.startTime)} →{' '}
+                    {formatTime(speedPreview.endTime)}
+                  </span>
+                  <span className="text-orange-400 font-mono text-sm">
+                    {speedPreview.speed}x
+                  </span>
+                  <span className="text-gray-500 text-xs">
+                    ({(speedPreview.endTime - speedPreview.startTime).toFixed(1)}s)
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (videoPlayerRef.current) {
+                        const audioCtrl = getGlobalAudioController()
+                        audioCtrl.setPlaybackRate(1)
+                      }
+                      setSpeedPreview(null)
+                      const speedInst = instructions.find(
+                        i => i.type === 'changeSpeed' && i.status === 'approved'
+                      )
+                      if (speedInst) {
+                        updateInstruction(speedInst.id, {
+                          status: 'error',
+                          error: 'cancelled by user'
+                        })
+                      }
+                    }}
+                    className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const speedInst = instructions.find(
+                        i => i.type === 'changeSpeed' && i.status === 'approved'
+                      )
+                      if (speedInst) {
+                        setSpeedLoading(true)
+                        try {
+                          const response = await fetch('/api/video/process', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              videoId: video?.id,
+                              instruction: { type: 'changeSpeed', params: speedInst.params }
+                            })
+                          })
+                          const data = await response.json()
+                          if (data.success && data.outputPath) {
+                            const { setVideo } = useEditorStore.getState()
+                            if (video) {
+                              setVideo({ ...video, url: data.outputPath })
+                            }
+                            updateInstruction(speedInst.id, { status: 'complete' })
+                            const audioCtrl = getGlobalAudioController()
+                            audioCtrl.setPlaybackRate(1)
+                            setSpeedPreview(null)
+                          }
+                        } catch (error) {
+                          console.error('[Editor] Speed change execution failed:', error)
+                        } finally {
+                          setSpeedLoading(false)
+                        }
+                      }
+                    }}
+                    disabled={speedLoading}
+                    className="px-3 py-1.5 text-xs bg-orange-600 hover:bg-orange-700 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                  >
+                    {speedLoading ? (
+                      <>
+                        <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      'Confirm & Apply'
+                    )}
                   </button>
                 </div>
               </div>

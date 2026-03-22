@@ -65,22 +65,28 @@ export function ChatPanel({ onSeek, onExecuteInstruction }: ChatPanelProps) {
       addMessage(assistantMessage)
 
       if (data.instruction) {
-        console.log('[ChatPanel] Received instruction:', data.instruction)
-        const instruction = {
-          id: `instruction_${Date.now()}`,
-          ...data.instruction,
-          status: 'pending' as const,
-          createdAt: new Date()
-        }
+        // Handle both single instruction and array of instructions
+        const instructions = Array.isArray(data.instruction) ? data.instruction : [data.instruction]
 
-        console.log('[ChatPanel] Adding instruction to store:', instruction)
-        addInstruction(instruction)
-        console.log('[ChatPanel] Calling onExecuteInstruction')
-        onExecuteInstruction(instruction)
+        for (let i = 0; i < instructions.length; i++) {
+          const instr = instructions[i]
+          console.log(`[ChatPanel] Received instruction ${i + 1}/${instructions.length}:`, instr)
+          const instruction = {
+            id: `instruction_${Date.now()}_${i}`,
+            ...instr,
+            status: 'pending' as const,
+            createdAt: new Date()
+          }
 
-        // Handle seek instruction immediately
-        if (data.instruction.type === 'seek') {
-          onSeek(data.instruction.params.time)
+          console.log('[ChatPanel] Adding instruction to store:', instruction)
+          addInstruction(instruction)
+          console.log('[ChatPanel] Calling onExecuteInstruction')
+          onExecuteInstruction(instruction)
+
+          // Handle seek instruction immediately
+          if (instr.type === 'seek') {
+            onSeek(instr.params.time)
+          }
         }
       }
     } catch (error) {

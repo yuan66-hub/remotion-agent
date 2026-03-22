@@ -23,6 +23,18 @@ interface CropPreview {
   endTime: number;
 }
 
+interface VolumePreview {
+  startTime: number;
+  endTime: number;
+  volume: number; // 0-2, where 1 = 100%
+}
+
+interface SpeedPreview {
+  startTime: number;
+  endTime: number;
+  speed: number; // e.g., 2 = 2x speed
+}
+
 interface EditorState {
   video: Video | null;
   messages: Message[];
@@ -33,9 +45,13 @@ interface EditorState {
   isProcessing: boolean;
   renderJobId: string | null;
   cropPreview: CropPreview | null;
+  volumePreview: VolumePreview | null;
+  speedPreview: SpeedPreview | null;
 
   setVideo: (video: Video | null) => void;
   setCropPreview: (preview: CropPreview | null) => void;
+  setVolumePreview: (preview: VolumePreview | null) => void;
+  setSpeedPreview: (preview: SpeedPreview | null) => void;
   addMessage: (message: Message) => void;
   addInstruction: (instruction: Instruction) => void;
   updateInstruction: (id: string, updates: Partial<Instruction>) => void;
@@ -60,9 +76,13 @@ export const useEditorStore = create<EditorState>((set) => ({
   isProcessing: false,
   renderJobId: null,
   cropPreview: null,
+  volumePreview: null,
+  speedPreview: null,
 
   setVideo: (video) => set({ video }),
   setCropPreview: (preview) => set({ cropPreview: preview }),
+  setVolumePreview: (preview) => set({ volumePreview: preview }),
+  setSpeedPreview: (preview) => set({ speedPreview: preview }),
   addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
   addInstruction: (instruction) => set((state) => ({ instructions: [...state.instructions, instruction] })),
   updateInstruction: (id, updates) => set((state) => ({

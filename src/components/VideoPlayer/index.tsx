@@ -4,12 +4,14 @@ import {
   useRef,
   useState,
   useEffect,
+  useMemo,
   forwardRef,
   useImperativeHandle
 } from 'react'
 import { useEditorStore } from '@/stores/editorStore'
 import { Timeline } from './Timeline'
 import { Controls } from './Controls'
+import { AudioController, getGlobalAudioController } from '@/lib/audio/AudioController'
 
 function formatTime(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -27,6 +29,7 @@ export interface VideoPlayerHandle {
 
 export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const audioControllerRef = useRef<AudioController | null>(null)
   const {
     video,
     currentTime,
@@ -35,12 +38,31 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
     setIsPlaying,
     overlays,
     cropPreview,
+    volumePreview,
+    speedPreview,
     setIsPlaying: storeSetIsPlaying
   } = useEditorStore()
   const [duration, setDuration] = useState(0)
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
   const [playbackRate, setPlaybackRate] = useState(1)
+
+  // Compute effective playback rate for UI display (preview speed or user-set speed)
+  const effectivePlaybackRate = useMemo(() => {
+    if (speedPreview && currentTime >= speedPreview.startTime && currentTime <= speedPreview.endTime) {
+      return speedPreview.speed
+    }
+    return playbackRate
+  }, [currentTime, speedPreview, playbackRate])
+
+  // Initialize AudioController
+  useEffect(() => {
+    audioControllerRef.current = getGlobalAudioController()
+
+    return () => {
+      // Don't dispose global controller, just detach
+    }
+  }, [])
 
   // Get active overlays at current time
   const activeOverlays = overlays.filter(
@@ -64,6 +86,42 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
       setCurrentTime(cropPreview.startTime)
     }
   }, [currentTime, cropPreview, storeSetIsPlaying, setCurrentTime])
+
+  // Real-time volume preview effect
+  useEffect(() => {
+    if (volumePreview && currentTime >= volumePreview.startTime && currentTime <= volumePreview.endTime) {
+      // Apply volume preview in real-time to audio context
+      if (audioControllerRef.current) {
+        audioControllerRef.current.setVolume(volumePreview.volume)
+      } else if (videoRef.current) {
+        videoRef.current.volume = Math.min(volumePreview.volume, 1)
+      }
+    }
+  }, [currentTime, volumePreview])
+
+  // Real-time speed preview effect
+  useEffect(() => {
+    if (speedPreview && currentTime >= speedPreview.startTime && currentTime <= speedPreview.endTime) {
+      // Apply speed preview in real-time to video element
+      if (audioControllerRef.current) {
+        audioControllerRef.current.setPlaybackRate(speedPreview.speed)
+      } else if (videoRef.current) {
+        videoRef.current.playbackRate = speedPreview.speed
+      }
+    } else if (!speedPreview || currentTime < speedPreview.startTime || currentTime > speedPreview.endTime) {
+      // Reset to normal speed when outside preview range
+      if (audioControllerRef.current) {
+        audioControllerRef.current.setPlaybackRate(1)
+      } else if (videoRef.current) {
+        videoRef.current.playbackRate = 1
+      }
+    }
+  }, [currentTime, speedPreview])
+
+  // Compute effective volume for display (preview volume or user-set volume)
+  const effectiveVolume = volumePreview && currentTime >= volumePreview.startTime && currentTime <= volumePreview.endTime
+    ? volumePreview.volume
+    : volume
 
   useImperativeHandle(ref, () => ({
     seekTo: (time: number) => {
@@ -92,6 +150,11 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       setDuration(videoRef.current.duration)
+
+      // Attach video element to AudioController
+      if (audioControllerRef.current) {
+        audioControllerRef.current.attachMediaElement(videoRef.current)
+      }
     }
   }
 
@@ -103,11 +166,15 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
   }
 
   const handleVolumeChange = (newVolume: number) => {
-    if (videoRef.current) {
+    if (audioControllerRef.current) {
+      // Use AudioController for volume (supports > 1.0 gain)
+      audioControllerRef.current.setVolume(newVolume)
+    } else if (videoRef.current) {
+      // Fallback to native video volume
       videoRef.current.volume = newVolume
-      setVolume(newVolume)
-      setIsMuted(newVolume === 0)
     }
+    setVolume(newVolume)
+    setIsMuted(newVolume === 0)
   }
 
   const toggleMute = () => {
@@ -118,14 +185,20 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
   }
 
   const togglePlay = () => {
+    // Resume audio context on first play (required by browsers)
+    if (audioControllerRef.current) {
+      audioControllerRef.current.resume()
+    }
     setIsPlaying(!isPlaying)
   }
 
   const handlePlaybackRateChange = (rate: number) => {
-    if (videoRef.current) {
+    if (audioControllerRef.current) {
+      audioControllerRef.current.setPlaybackRate(rate)
+    } else if (videoRef.current) {
       videoRef.current.playbackRate = rate
-      setPlaybackRate(rate)
     }
+    setPlaybackRate(rate)
   }
 
   if (!video) {
@@ -335,9 +408,9 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle>((_, ref) => {
           isPlaying={isPlaying}
           currentTime={currentTime}
           duration={duration}
-          volume={volume}
+          volume={effectiveVolume}
           isMuted={isMuted}
-          playbackRate={playbackRate}
+          playbackRate={effectivePlaybackRate}
           onTogglePlay={togglePlay}
           onSeek={handleSeek}
           onVolumeChange={handleVolumeChange}
