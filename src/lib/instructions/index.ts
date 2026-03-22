@@ -11,12 +11,14 @@ You have access to the following video editing operations:
 - splitClip: Split video into separate clips (startTime, endTime)
 - deleteClip: Delete a portion of the video (startTime, endTime)
 - changeSpeed: Change playback speed of a clip (startTime, endTime, speed)
+- changeVolume: Adjust audio volume (startTime, endTime, volume)
 
 **Remotion Operations (for overlays and effects):**
 - addText: Add text overlay to video (startTime, endTime, text, position, fontSize, color)
 - addHighlight: Add a highlight effect to a portion (startTime, endTime, color)
-- addTransition: Add transition effect (startTime, endTime, type)
+- addTransition: Add transition effect (startTime, endTime, type, effect, direction, duration, easing, intensity)
 - modifyText: Modify an existing text overlay (textId, text, position, fontSize, color, startTime, endTime)
+- deleteText: Delete text overlays by time range or IDs (mode, startTime, endTime, textIds)
 
 **Control Operations:**
 - seek: Jump to a specific time in the video (time)
@@ -64,9 +66,9 @@ export async function parseInstruction(
 
     const instructionType = parsed.type as InstructionType;
     const validTypes: InstructionType[] = [
-      'crop', 'splitClip', 'deleteClip', 'changeSpeed',
+      'crop', 'splitClip', 'deleteClip', 'changeSpeed', 'changeVolume',
       'addText', 'addHighlight', 'addTransition',
-      'modifyText',
+      'modifyText', 'deleteText',
       'seek', 'confirmPlan', 'render'
     ];
 
@@ -104,6 +106,13 @@ export function validateInstruction(instruction: Instruction): boolean {
         typeof params.speed === 'number' &&
         params.speed > 0
       );
+    case 'changeVolume':
+      return (
+        typeof params.startTime === 'number' &&
+        typeof params.endTime === 'number' &&
+        typeof params.volume === 'number' &&
+        params.volume >= 0
+      );
     case 'addText':
       return (
         typeof params.startTime === 'number' &&
@@ -125,6 +134,18 @@ export function validateInstruction(instruction: Instruction): boolean {
         typeof params.textId === 'string' &&
         params.textId.length > 0
       );
+    case 'deleteText':
+      if (params.mode === 'timeRange') {
+        return (
+          typeof params.startTime === 'number' &&
+          typeof params.endTime === 'number' &&
+          params.startTime >= 0 &&
+          params.endTime > params.startTime
+        );
+      } else if (params.mode === 'textIds') {
+        return Array.isArray(params.textIds) && params.textIds.length > 0;
+      }
+      return false;
     case 'seek':
       return typeof params.time === 'number';
     case 'confirmPlan':
