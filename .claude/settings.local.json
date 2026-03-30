@@ -5,7 +5,8 @@
       "Bash(mkdir:*)",
       "Bash(npm run:*)",
       "Bash(npm test:*)",
-      "Bash(xargs ls:*)"
+      "Bash(xargs ls:*)",
+      "WebSearch"
     ]
   }
 }

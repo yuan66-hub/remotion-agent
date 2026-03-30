@@ -11,7 +11,8 @@ import {
   createHighlightOverlay,
   createTransitionOverlay
 } from '@/lib/instructions/remotion'
-import type { TextAnimationConfig, TextAnimationType } from '@/lib/instructions/types'
+import type { TextAnimationConfig, TextAnimationType, RemotionTextParams, RemotionModifyTextParams } from '@/lib/instructions/types'
+import { resolveTemplate } from '@/lib/instructions/remotion/effectTemplates'
 import { getGlobalAudioController } from '@/lib/audio/AudioController'
 
 function formatTime(seconds: number): string {
@@ -71,26 +72,11 @@ export function Editor() {
       console.log('[Editor] Setting instruction to complete')
       // Add to overlays store for rendering
       if (instruction.type === 'addText') {
-        // 构建动画配置
-        const animationConfig: TextAnimationConfig | undefined =
-          inst.params.animation as TextAnimationConfig;
-        const entranceAnimation = inst.params.entranceAnimation as TextAnimationType | undefined;
-        const exitAnimation = inst.params.exitAnimation as TextAnimationType | undefined;
-        const animationDuration = inst.params.animationDuration as number | undefined;
+        // 展开模板默认值，显式参数覆盖
+        const resolved = resolveTemplate(inst.params as unknown as RemotionTextParams & { template?: string });
 
         addOverlay(
-          createTextOverlay({
-            startTime: inst.params.startTime as number,
-            endTime: inst.params.endTime as number,
-            text: inst.params.text as string,
-            position: inst.params.position as { x: number; y: number },
-            fontSize: inst.params.fontSize as number,
-            color: inst.params.color as string,
-            animation: animationConfig,
-            entranceAnimation,
-            exitAnimation,
-            animationDuration
-          })
+          createTextOverlay(resolved)
         )
       } else if (instruction.type === 'addHighlight') {
         addOverlay(
@@ -188,26 +174,11 @@ export function Editor() {
       console.log('[Editor] Auto-executing Remotion overlay')
       // Add to overlays store for rendering
       if (inst.type === 'addText') {
-        // 构建动画配置
-        const animationConfig: TextAnimationConfig | undefined =
-          inst.params.animation as TextAnimationConfig;
-        const entranceAnimation = inst.params.entranceAnimation as TextAnimationType | undefined;
-        const exitAnimation = inst.params.exitAnimation as TextAnimationType | undefined;
-        const animationDuration = inst.params.animationDuration as number | undefined;
+        // 展开模板默认值，显式参数覆盖
+        const resolved = resolveTemplate(inst.params as unknown as RemotionTextParams & { template?: string });
 
         addOverlay(
-          createTextOverlay({
-            startTime: inst.params.startTime as number,
-            endTime: inst.params.endTime as number,
-            text: inst.params.text as string,
-            position: inst.params.position as { x: number; y: number },
-            fontSize: inst.params.fontSize as number,
-            color: inst.params.color as string,
-            animation: animationConfig,
-            entranceAnimation,
-            exitAnimation,
-            animationDuration
-          })
+          createTextOverlay(resolved)
         )
       } else if (inst.type === 'addHighlight') {
         addOverlay(
@@ -245,20 +216,22 @@ export function Editor() {
       const overlay = overlays.find(o => o.id === textId)
       if (overlay && overlay.type === 'text') {
         console.log('[Editor] Modifying text overlay:', textId)
+        // 展开模板默认值（如有），显式参数覆盖
+        const resolved = resolveTemplate(inst.params as unknown as RemotionModifyTextParams & { template?: string });
         updateOverlay(textId, {
           text:
-            (inst.params.text as string) || (overlay as { text?: string }).text,
+            (resolved.text as string) || (overlay as { text?: string }).text,
           position:
-            (inst.params.position as { x: number; y: number }) ||
+            (resolved.position as { x: number; y: number }) ||
             overlay.position,
           fontSize:
-            (inst.params.fontSize as number) ||
+            (resolved.fontSize as number) ||
             (overlay as { fontSize?: number }).fontSize,
           color:
-            (inst.params.color as string) ||
+            (resolved.color as string) ||
             (overlay as { color?: string }).color,
-          startTime: (inst.params.startTime as number) || overlay.startTime,
-          endTime: (inst.params.endTime as number) || overlay.endTime
+          startTime: (resolved.startTime as number) || overlay.startTime,
+          endTime: (resolved.endTime as number) || overlay.endTime
         })
         updateInstruction(inst.id, { status: 'complete' })
       } else {

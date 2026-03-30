@@ -37,6 +37,7 @@ pnpm run build
 ```
 
 环境变量：
+
 ```bash
 OPENAI_API_KEY=your_api_key    # OpenAI API Key（可选，已默认使用通义千问）
 ALIBABA_API_KEY=your_key       # 阿里云 API Key（默认已配置）
@@ -50,19 +51,28 @@ ALIBABA_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 以下是 AI Video Editing Agent 的主要功能演示：
 
 ### 1. 智能视频上传与分析
+
 ![智能视频上传与分析](./docs/images/image_01.png)
 
 ### 2. 自然语言指令编辑
+
 ![自然语言指令编辑](./docs/images/image_02.png)
 
 ### 3. 实时预览与调整
+
 ![实时预览与调整](./docs/images/image_03.png)
 
 ### 4. 叠加层效果展示
+
 ![叠加层效果展示](./docs/images/image_04.png)
 
 ### 5. 最终渲染输出
+
 ![最终渲染输出](./docs/images/image_05.png)
+
+### 6. 导出视频展示
+
+![导出视频展示](./docs/images/image_06.png)
 
 ---
 
@@ -127,10 +137,10 @@ flowchart LR
 
 本项目采用**双引擎架构**处理视频编辑任务：
 
-| 引擎 | 职责 | 处理内容 |
-|------|------|----------|
-| **ffmpeg** | 底层视频操作 | 裁剪、分割、删除、变速、格式转换 |
-| **Remotion** | 叠加层渲染 | 文字、花字、高亮、转场、特效 |
+| 引擎         | 职责         | 处理内容                         |
+| ------------ | ------------ | -------------------------------- |
+| **ffmpeg**   | 底层视频操作 | 裁剪、分割、删除、变速、格式转换 |
+| **Remotion** | 叠加层渲染   | 文字、花字、高亮、转场、特效     |
 
 ```
 输入视频 → ffmpeg (底层编辑) → 中间视频 → Remotion (叠加层) → 最终视频
@@ -140,11 +150,11 @@ flowchart LR
 
 指令分为三类，由不同引擎处理：
 
-| 类型 | 指令 | 引擎 |
-|------|------|------|
-| **视频操作** | `crop`, `splitClip`, `deleteClip`, `changeSpeed` | ffmpeg |
-| **叠加层** | `addText`, `addHighlight`, `addTransition` | Remotion |
-| **控制** | `seek`, `confirmPlan`, `render` | 前端/后端 |
+| 类型         | 指令                                             | 引擎      |
+| ------------ | ------------------------------------------------ | --------- |
+| **视频操作** | `crop`, `splitClip`, `deleteClip`, `changeSpeed` | ffmpeg    |
+| **叠加层**   | `addText`, `addHighlight`, `addTransition`       | Remotion  |
+| **控制**     | `seek`, `confirmPlan`, `render`                  | 前端/后端 |
 
 ---
 
@@ -211,10 +221,10 @@ AI：  {"type": "crop", "params": {"startTime": 5, "endTime": 15}},
 
 支持两种预览模式：
 
-| 模式 | 触发条件 | 渲染方式 |
-|------|----------|----------|
+| 模式         | 触发条件                      | 渲染方式           |
+| ------------ | ----------------------------- | ------------------ |
 | **快速预览** | 简单操作（如 seek、单个文字） | 即时预览，无需等待 |
-| **完整渲染** | 复杂操作（多个叠加层、变速） | Remotion 完整渲染 |
+| **完整渲染** | 复杂操作（多个叠加层、变速）  | Remotion 完整渲染  |
 
 ---
 
@@ -225,6 +235,7 @@ AI：  {"type": "crop", "params": {"startTime": 5, "endTime": 15}},
 **适用人群**：YouTuber、Vlogger、直播切片编辑
 
 **典型需求**：
+
 - 快速添加字幕和花字
 - 裁剪精彩片段
 - 变速处理（慢动作、快进）
@@ -239,6 +250,7 @@ AI：  {"type": "crop", "params": {"startTime": 5, "endTime": 15}},
 **适用人群**：在线课程制作者、培训师
 
 **典型需求**：
+
 - 重点片段高亮标注
 - 讲解要点文字叠加
 - 章节时间线标记
@@ -253,6 +265,7 @@ AI：  {"type": "crop", "params": {"startTime": 5, "endTime": 15}},
 **适用人群**：市场部、培训部、内部沟通
 
 **典型需求**：
+
 - 快速剪辑会议录像
 - 添加水印和品牌元素
 - 制作产品演示视频
@@ -267,6 +280,7 @@ AI：  {"type": "crop", "params": {"startTime": 5, "endTime": 15}},
 **适用人群**：AI 应用开发者、视频平台
 
 **典型需求**：
+
 - 集成到现有产品
 - 自动化视频处理流水线
 - 定制化指令集
@@ -278,25 +292,25 @@ AI：  {"type": "crop", "params": {"startTime": 5, "endTime": 15}},
 
 ### 5. 不适用场景
 
-| 场景 | 原因 |
-|------|------|
+| 场景           | 原因                                 |
+| -------------- | ------------------------------------ |
 | 精细化专业剪辑 | 需要关键帧、遮罩、多轨编辑等专业功能 |
-| 实时协作编辑 | 当前为单用户架构 |
-| 超长视频处理 | 受限于预览/渲染性能 |
-| 复杂特效包装 | 建议使用 After Effects |
+| 实时协作编辑   | 当前为单用户架构                     |
+| 超长视频处理   | 受限于预览/渲染性能                  |
+| 复杂特效包装   | 建议使用 After Effects               |
 
 ---
 
 ## 技术栈
 
-| 类别 | 技术 | 用途 |
-|------|------|------|
-| **框架** | Next.js 15 (App Router) | Web 应用框架 |
-| **AI** | Vercel AI SDK + 通义千问/GPT-4o | 自然语言处理 |
-| **视频底层** | ffmpeg | 裁剪、分割、变速、格式转换 |
-| **视频叠加** | Remotion | 文字、特效、转场动画 |
-| **状态管理** | Zustand | 前端状态管理 |
-| **样式** | Tailwind CSS | UI 样式 |
+| 类别         | 技术                            | 用途                       |
+| ------------ | ------------------------------- | -------------------------- |
+| **框架**     | Next.js 15 (App Router)         | Web 应用框架               |
+| **AI**       | Vercel AI SDK + 通义千问/GPT-4o | 自然语言处理               |
+| **视频底层** | ffmpeg                          | 裁剪、分割、变速、格式转换 |
+| **视频叠加** | Remotion                        | 文字、特效、转场动画       |
+| **状态管理** | Zustand                         | 前端状态管理               |
+| **样式**     | Tailwind CSS                    | UI 样式                    |
 
 ---
 
@@ -304,18 +318,18 @@ AI：  {"type": "crop", "params": {"startTime": 5, "endTime": 15}},
 
 ### 完整指令列表
 
-| 指令 | 类型 | 参数 | 说明 |
-|------|------|------|------|
-| `seek` | 控制 | `time: number` | 跳转到指定时间点 |
-| `crop` | ffmpeg | `startTime, endTime` | 裁剪视频片段 |
-| `splitClip` | ffmpeg | `startTime, endTime` | 分割视频片段 |
-| `deleteClip` | ffmpeg | `startTime, endTime` | 删除片段 |
-| `changeSpeed` | ffmpeg | `startTime, endTime, speed` | 变速（0.5x, 2x等） |
-| `addText` | Remotion | `startTime, endTime, text, position` | 添加文字叠加 |
-| `addHighlight` | Remotion | `startTime, endTime, color` | 高亮时间段 |
-| `addTransition` | Remotion | `startTime, endTime, type` | 添加转场效果 |
-| `confirmPlan` | 控制 | `confirmed: boolean` | 确认/取消计划 |
-| `render` | 控制 | `outputFormat, quality` | 触发渲染 |
+| 指令            | 类型     | 参数                                 | 说明                |
+| --------------- | -------- | ------------------------------------ | ------------------- |
+| `seek`          | 控制     | `time: number`                       | 跳转到指定时间点    |
+| `crop`          | ffmpeg   | `startTime, endTime`                 | 裁剪视频片段        |
+| `splitClip`     | ffmpeg   | `startTime, endTime`                 | 分割视频片段        |
+| `deleteClip`    | ffmpeg   | `startTime, endTime`                 | 删除片段            |
+| `changeSpeed`   | ffmpeg   | `startTime, endTime, speed`          | 变速（0.5x, 2x 等） |
+| `addText`       | Remotion | `startTime, endTime, text, position` | 添加文字叠加        |
+| `addHighlight`  | Remotion | `startTime, endTime, color`          | 高亮时间段          |
+| `addTransition` | Remotion | `startTime, endTime, type`           | 添加转场效果        |
+| `confirmPlan`   | 控制     | `confirmed: boolean`                 | 确认/取消计划       |
+| `render`        | 控制     | `outputFormat, quality`              | 触发渲染            |
 
 ---
 
@@ -323,13 +337,13 @@ AI：  {"type": "crop", "params": {"startTime": 5, "endTime": 15}},
 
 ### 端点总览
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| `POST` | `/api/video/upload` | 上传视频文件 |
-| `POST` | `/api/chat` | 发送对话消息 |
-| `POST` | `/api/preview` | 生成预览 |
-| `POST` | `/api/render` | 开始渲染任务 |
-| `GET` | `/api/render/[jobId]` | 查询渲染状态 |
+| 方法   | 路径                  | 说明         |
+| ------ | --------------------- | ------------ |
+| `POST` | `/api/video/upload`   | 上传视频文件 |
+| `POST` | `/api/chat`           | 发送对话消息 |
+| `POST` | `/api/preview`        | 生成预览     |
+| `POST` | `/api/render`         | 开始渲染任务 |
+| `GET`  | `/api/render/[jobId]` | 查询渲染状态 |
 
 ### 请求/响应示例
 

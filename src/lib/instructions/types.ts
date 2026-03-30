@@ -174,6 +174,8 @@ export interface RemotionTextParams {
   position: { x: number; y: number };
   fontSize?: number;
   color?: string;
+  // 效果模板名称（可选，显式参数覆盖模板默认值）
+  template?: string;
   // 动画配置
   animation?: TextAnimationConfig;
   // 便捷动画选项（简化用法）
@@ -190,6 +192,8 @@ export interface RemotionModifyTextParams {
   color?: string;
   startTime?: number;
   endTime?: number;
+  // 效果模板名称（可选，显式参数覆盖模板默认值）
+  template?: string;
   animation?: TextAnimationConfig;
   entranceAnimation?: TextAnimationType;
   exitAnimation?: TextAnimationType;
