@@ -44,6 +44,7 @@ interface EditorState {
   isPlaying: boolean;
   isProcessing: boolean;
   renderJobId: string | null;
+  renderProgress: number | null; // 0-1, null = not rendering
   cropPreview: CropPreview | null;
   volumePreview: VolumePreview | null;
   speedPreview: SpeedPreview | null;
@@ -63,6 +64,7 @@ interface EditorState {
   setIsPlaying: (playing: boolean) => void;
   setIsProcessing: (processing: boolean) => void;
   setRenderJobId: (jobId: string | null) => void;
+  setRenderProgress: (progress: number | null) => void;
   clearMessages: () => void;
 }
 
@@ -75,6 +77,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   isPlaying: false,
   isProcessing: false,
   renderJobId: null,
+  renderProgress: null,
   cropPreview: null,
   volumePreview: null,
   speedPreview: null,
@@ -116,5 +119,6 @@ export const useEditorStore = create<EditorState>((set) => ({
   setIsPlaying: (playing) => set({ isPlaying: playing }),
   setIsProcessing: (processing) => set({ isProcessing: processing }),
   setRenderJobId: (jobId) => set({ renderJobId: jobId }),
+  setRenderProgress: (progress) => set({ renderProgress: progress }),
   clearMessages: () => set({ messages: [] }),
 }));

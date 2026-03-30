@@ -37,14 +37,22 @@ export interface RenderJob {
   id: string;
   videoId: string;
   status: 'pending' | 'processing' | 'complete' | 'error';
+  progress?: number; // 0-1 render progress
   outputPath?: string;
   error?: string;
   createdAt: Date;
   completedAt?: Date;
 }
 
-const videos = new Map<string, StoredVideo>();
-const renderJobs = new Map<string, RenderJob>();
+// Use globalThis to persist across Next.js module re-evaluations in dev mode
+const globalStore = globalThis as typeof globalThis & {
+  __videos?: Map<string, StoredVideo>;
+  __renderJobs?: Map<string, RenderJob>;
+};
+if (!globalStore.__videos) globalStore.__videos = new Map();
+if (!globalStore.__renderJobs) globalStore.__renderJobs = new Map();
+const videos = globalStore.__videos;
+const renderJobs = globalStore.__renderJobs;
 
 export async function ensureDirectories(): Promise<void> {
   await fs.promises.mkdir(UPLOAD_DIR, { recursive: true });

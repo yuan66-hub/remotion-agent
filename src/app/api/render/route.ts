@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getVideo, createRenderJob, updateRenderJob } from '@/lib/video/storage';
-import { validateInstruction } from '@/lib/instructions';
-import type { Instruction } from '@/lib/instructions/types';
+import { renderVideo } from '@/lib/render/remotion-renderer';
+import type { Overlay } from '@/lib/instructions/remotion';
 import path from 'path';
 import fs from 'fs';
 
 export async function POST(request: NextRequest) {
   try {
-    const { videoId, instructions, outputFormat = 'mp4', quality = 'medium' } = await request.json();
+    const {
+      videoId,
+      overlays,
+      outputFormat = 'mp4',
+      quality = 'medium',
+    } = await request.json();
 
     if (!videoId) {
       return NextResponse.json({ error: 'No video selected' }, { status: 400 });
@@ -18,23 +23,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Video not found' }, { status: 404 });
     }
 
-    if (!instructions || !Array.isArray(instructions)) {
-      return NextResponse.json({ error: 'Invalid instructions' }, { status: 400 });
-    }
-
-    for (const inst of instructions as Instruction[]) {
-      if (!validateInstruction(inst)) {
-        return NextResponse.json(
-          { error: `Invalid instruction: ${inst.type}` },
-          { status: 400 }
-        );
-      }
+    if (!overlays || !Array.isArray(overlays)) {
+      return NextResponse.json({ error: 'Invalid overlays' }, { status: 400 });
     }
 
     const job = await createRenderJob(videoId);
 
     // Start render process in background
-    processRenderJob(job.id, video.path, instructions as Instruction[], outputFormat, quality);
+    processRenderJob(
+      job.id,
+      video,
+      overlays as Overlay[],
+      outputFormat,
+      quality as 'low' | 'medium' | 'high'
+    );
 
     return NextResponse.json({
       jobId: job.id,
@@ -52,12 +54,12 @@ export async function POST(request: NextRequest) {
 
 async function processRenderJob(
   jobId: string,
-  inputPath: string,
-  instructions: Instruction[],
+  video: { path: string; duration: number; width: number; height: number },
+  overlays: Overlay[],
   outputFormat: string,
-  _quality: string
+  quality: 'low' | 'medium' | 'high'
 ): Promise<void> {
-  await updateRenderJob(jobId, { status: 'processing' });
+  await updateRenderJob(jobId, { status: 'processing', progress: 0 });
 
   try {
     const outputDir = path.join(process.cwd(), 'public', 'outputs');
@@ -65,24 +67,41 @@ async function processRenderJob(
 
     await fs.promises.mkdir(outputDir, { recursive: true });
 
-    const ffmpegInstructions = instructions.filter(i =>
-      ['crop', 'splitClip', 'deleteClip', 'changeSpeed'].includes(i.type)
-    );
+    // Use sensible defaults if video metadata is missing
+    const width = video.width || 1920;
+    const height = video.height || 1080;
+    const fps = 30;
+    const duration = video.duration || 10;
 
-    if (ffmpegInstructions.length === 0) {
-      // Just Remotion overlays - copy original video
-      await fs.promises.copyFile(inputPath, outputPath);
+    if (overlays.length === 0) {
+      // No overlays — just copy the original video
+      await fs.promises.copyFile(video.path, outputPath);
     } else {
-      // For complex edits, copy as placeholder
-      await fs.promises.copyFile(inputPath, outputPath);
+      // Render with Remotion — overlays baked into the video
+      await renderVideo({
+        videoPath: video.path,
+        overlays,
+        outputPath,
+        width,
+        height,
+        fps,
+        durationInSeconds: duration,
+        quality,
+        onProgress: (progress) => {
+          // Update job progress (fire-and-forget)
+          updateRenderJob(jobId, { progress });
+        },
+      });
     }
 
     await updateRenderJob(jobId, {
       status: 'complete',
+      progress: 1,
       outputPath: `/outputs/${jobId}.${outputFormat}`,
       completedAt: new Date(),
     });
   } catch (error) {
+    console.error(`[Render] Job ${jobId} failed:`, error);
     await updateRenderJob(jobId, {
       status: 'error',
       error: error instanceof Error ? error.message : 'Unknown error',

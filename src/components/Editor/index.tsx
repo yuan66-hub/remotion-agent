@@ -25,7 +25,9 @@ export function Editor() {
     video,
     instructions,
     isProcessing,
+    renderProgress,
     setRenderJobId,
+    setRenderProgress,
     updateInstruction,
     overlays,
     updateOverlay,
@@ -355,13 +357,14 @@ export function Editor() {
     // For render instruction, start the render process
     if (inst.type === 'render') {
       setIsProcessing(true)
+      setRenderProgress(0)
       try {
         const response = await fetch('/api/render', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             videoId: video.id,
-            instructions: instructions.filter(i => i.status === 'approved'),
+            overlays,
             outputFormat: inst.params.outputFormat || 'mp4',
             quality: inst.params.quality || 'medium'
           })
@@ -370,10 +373,15 @@ export function Editor() {
         const data = await response.json()
         setRenderJobId(data.jobId)
 
-        // Poll for render status
+        // Poll for render status and progress
         const pollInterval = setInterval(async () => {
           const statusRes = await fetch(`/api/render/${data.jobId}`)
           const statusData = await statusRes.json()
+
+          // Update progress
+          if (typeof statusData.progress === 'number') {
+            setRenderProgress(statusData.progress)
+          }
 
           if (
             statusData.status === 'complete' ||
@@ -381,16 +389,24 @@ export function Editor() {
           ) {
             clearInterval(pollInterval)
             setIsProcessing(false)
-            if (statusData.status === 'complete') {
-              alert(`Render complete! Output: ${statusData.outputPath}`)
-            } else {
+            setRenderProgress(null)
+            if (statusData.status === 'complete' && statusData.outputPath) {
+              // Auto-download the rendered video
+              const link = document.createElement('a')
+              link.href = statusData.outputPath
+              link.download = statusData.outputPath.split('/').pop() || 'output.mp4'
+              document.body.appendChild(link)
+              link.click()
+              document.body.removeChild(link)
+            } else if (statusData.status === 'error') {
               alert(`Render failed: ${statusData.error}`)
             }
           }
-        }, 2000)
+        }, 1000)
       } catch (error) {
         console.error('Render error:', error)
         setIsProcessing(false)
+        setRenderProgress(null)
       }
     }
   }
@@ -820,12 +836,26 @@ export function Editor() {
         </div>
       </div>
 
-      {/* Processing overlay */}
+      {/* Processing overlay with progress */}
       {isProcessing && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg flex flex-col items-center">
+          <div className="bg-gray-800 p-6 rounded-lg flex flex-col items-center min-w-[300px]">
             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <p className="mt-4 text-white">Processing your video...</p>
+            <p className="mt-4 text-white">Rendering your video...</p>
+            {renderProgress !== null && (
+              <div className="mt-3 w-full">
+                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                  <span>Progress</span>
+                  <span>{Math.round(renderProgress * 100)}%</span>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.round(renderProgress * 100)}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
